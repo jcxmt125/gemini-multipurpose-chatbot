@@ -1,5 +1,6 @@
 #actual python modules
-import os, json, subprocess, datetime, cv2, qrcode, PIL.Image
+import os, json, subprocess, datetime, cv2, qrcode, PIL.Image, pypdf
+import google.generativeai as genai
 from dotenv import load_dotenv
 from pathlib import Path
 from qreader import QReader
@@ -52,13 +53,20 @@ def imageConvertInteractive():
     inputFilePath = input("Drag image file here: ")
 
 if __name__ == "__main__":
-    if not Path.exists("config.json"):
+    if not Path.exists(Path("config.json")):
         setup()
-    else:
-        print("Welcome back!")
+        print("Setup complete!")        
+
+    with open("config.json", "r") as f:
+        config = json.load(f)
+
+    print("Welcome, "+config["name"]+"!")
 
     while True:
         msg = input("> ")
+
+        if msg == "":
+            continue
 
         responseType = nltocommand.shouldIRespond(msg)
 
@@ -67,6 +75,7 @@ if __name__ == "__main__":
 
             while True:
                 print("Any files you'd like to attach? Return empty to stop adding files.")
+                print("Note: I'll extract text only from PDF files!")
     
                 filePath = input("Drag file here: ")
                 
@@ -74,14 +83,55 @@ if __name__ == "__main__":
 
                 filesList.append(filePath)
             
+            construct = str(datetime.datetime.now()) + ": " + msg + "\n"
+
+            filesUploadedList = []
+
             if len(filesList) > 0:
+                documentIndex = 1    
+
                 for i in filesList:
                     fileName = i.split("\\")[-1]
 
-                    extension = stripExt(fileName)
-            
-                    if extension in ["png", "jpg", "jpeg", "webp", "avif"]# is image
+                    fileName_noext = stripExt(fileName)
 
+                    extension = fileName.split(".")[-1]
+            
+                    if extension == "pdf":
+
+                        construct += "PDF document " + str(documentIndex) + ":\n"
+
+                        documentIndex += 1
+
+                        reader = pypdf.PdfReader(i)
+
+                        for j in range(reader.pages):
+                            text = reader.pages[j].extract_text()
+
+                            construct += text
+
+                        construct += "\n"
+
+                    else:
+                        file = genai.upload_file(path=i,display_name=fileName)
+                        filesUploadedList.append(genai.get_file(name=file.name))
+            
+            fullConstruct = [{'role':'user','parts':\
+                            [config["personality"] + "\n The user is named " + config["name"] + \
+                            ".\n These are summaries of your previous conversations with the user for context: " + config["ltmemory"]\
+                            +"\n Do not include a timestamp in your reply."]}]
+
+            
+
+            fullConstruct.append({'role':'user','parts':[construct]+filesUploadedList})
+
+            modelReply = gemrequest(fullConstruct)
+
+            if modelReply[0] == False:
+                print("Something went wrong... This information may be of use:")
+                print(modelReply[1])
+            else:
+                print(modelReply[1])
 
         elif responseType == 0:#Tool response
             pass

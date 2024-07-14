@@ -7,3 +7,4 @@ yt-dlp
 qreader
 qrcode
 pillow
+pypdf
