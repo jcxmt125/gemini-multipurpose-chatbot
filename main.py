@@ -1,5 +1,5 @@
 #actual python modules
-import os, json, subprocess, datetime, cv2, qrcode, PIL.Image, pypdf
+import os, json, subprocess, datetime, cv2, qrcode, pypdf, whisper
 import google.generativeai as genai
 from dotenv import load_dotenv
 from pathlib import Path
@@ -11,7 +11,7 @@ from urlextract import URLExtract
 from cfradar import urlScan
 from cfsd import sdgen
 from UploadFile import uploadFileToCloud
-import localconverters, cfllm, whispercf, nltocommand
+import cfllm, nltocommand, whispercf
 
 load_dotenv()
 
@@ -35,16 +35,40 @@ def setup():
     print("Example: You are a helpful assistant named Gemini.")
     personality = input("> ")
 
+    print("Next, decide how you'd like me to handle transcription. 0 for cloud (CF AI), 1~5 for local with 5 being large and 1 being tiny")
+    transcriber = int(input("> "))
+
+    if transcriber == 0:
+        whisperModel = 0
+    else:
+        whisperModel = ["tiny","base","small","medium","large"][transcriber-1]
+
     config = {
         "name": userName,
         "personality": personality,
+        "transcription": whisperModel,
         "ltmemory": "",
         "stmemory": []
     }
 
     with open("config.json", "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
     
+def fixConfig(config):
+    if "transcription" not in config:
+        print("Your config file doesn't seem to have selected tracription options! We'll choose a whisper model: 0 for cloud (CF AI), 1~5 for local with 5 being large and 1 being tiny")
+        transcriber = int(input("> "))
+
+        if transcriber == 0:
+            whisperModel = 0
+        else:
+            whisperModel = ["tiny","base","small","medium","large"][transcriber-1]
+    
+        config["transcription"] = whisperModel
+    
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=2)
+
 def videoConvertInteractive():
     print("I'll help you use ffmpeg!")
     inputFilePath = input("Drag video/audio file here: ")
@@ -78,7 +102,12 @@ def imageConvertInteractive():
 if __name__ == "__main__":
     if not Path.exists(Path("config.json")):
         setup()
-        print("Setup complete!")        
+        print("Setup complete!")
+
+    with open("config.json", "r") as f:
+        config = json.load(f)
+
+    fixConfig(config)
 
     with open("config.json", "r") as f:
         config = json.load(f)
@@ -100,7 +129,7 @@ if __name__ == "__main__":
                 modelReply = gemrequest(construct)
 
                 if modelReply[0] == False:
-                    print("Something went wrong!")
+                    print("E: Something went wrong!")
                     print(modelReply[1])
                     continue
                 else:
@@ -108,7 +137,7 @@ if __name__ == "__main__":
                     config["ltmemory"] += str(datetime.datetime.today()) + ": " + modelReply[1]
 
                     with open("config.json", "w") as f:
-                        json.dump(config, f)
+                        json.dump(config, f, indent= 2)
                     
                     continue
 
@@ -123,7 +152,7 @@ if __name__ == "__main__":
                 modelReply = gemrequest(construct)
 
                 if modelReply[0] == False:
-                    print("Something went wrong!")
+                    print("E: Something went wrong!")
                     print(modelReply[1])
                     continue
                 else:
@@ -197,24 +226,61 @@ if __name__ == "__main__":
             modelReply = gemrequest(fullConstruct)
 
             if modelReply[0] == False:
-                print("Something went wrong... This information may be of use:")
+                print("E: Something went wrong... This information may be of use:")
                 print(modelReply[1])
             else:
                 print(modelReply[1])
 
         elif responseType == 0:#Tool response
-            listOfActions = ["0. video/audio conversion", "1. image conversion", "2. QR code scanning", "3. Image generation"]
+            listOfActions = ["0. video/audio conversion", "1. image conversion", "2. QR code scanning", "3. QR code generation", "4. Image generation", "5. audio transcription"]
             task = nltocommand.nltocommand(listOfActions, msg)
 
             if task == -1:
-                print("Sorry, I couldn't figure out what to do.")
+                print("E: Sorry, I couldn't figure out what to do.")
                 continue
             elif task == 0:
                 videoConvertInteractive()
             elif task == 1:
                 imageConvertInteractive()
             elif task == 2:
-                continue
+                qreader = QReader()
+
+                filePath = input("Drag file with QR code here: ")
+
+                image = cv2.cvtColor(cv2.imread(filePath), cv2.COLOR_BGR2RGB)
+                decoded_text = qreader.detect_and_decode(image=image)
+
+                if len(decoded_text) == 0:
+                    print("QR code not found!")
+                
+                else:
+                    for j in decoded_text:
+                        print(j)
+            
+            elif task == 3:
+                img = qrcode.make(msg)
+                img.save("qrcode.png")
+                print("Image saved to qrcode.png in the working directory!")
+            
+            elif task == 4:
+                sdgen(input("Input prompt for inage generation: "))
+                print("Image saved to output.png on the working directory!")
+
+            elif task == 5:
+                filePath = input("Drag audio file to be transcribed here: ")
+                if config["transcription"] == 0:
+                    transcriptionResults = whispercf.cfwhisper(filePath)
+
+                    if transcriptionResults == False:
+                        print("E: Something went wrong while I tried to transcribe the file with Cloudflare AI. Please try again.")
+                    else:
+                        print(transcriptionResults)
+                else:
+                    model = whisper.load_model(config["transcription"])
+
+                    result = model.transcribe(filePath)
+
+                    print(result["text"])
 
         else:
             print("E: Something went wrong while I tried to understand you. Please try again.")
