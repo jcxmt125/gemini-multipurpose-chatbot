@@ -5,14 +5,12 @@ def shouldIRespond(message):
 
     construct = "A chatbot has recieved the following message from a user: " + message + "\n"
 
-    construct += "The chatbot can either try to use tools, or respond to the user directly with a multimodal LLM that can read images, videos and audio. Which should the bot do? Reply with 0 for tool usage, and 1 for LLM usage. Reply in a single number without text."
+    construct += "The chatbot can either try to use tools, or respond to the user directly with a multimodal LLM that can read images, videos and audio. Which should the bot do? Reply with 0 for tool usage (including video / image / audio conversion and image generation, as well as QR code reading), and 1 for LLM usage. Reply in a single number without text."
 
     try:
         gem = gemrequest(construct)[1]
     except:
         gem = nsllmreq("Only reply with a number. Do not contain any other text.",construct)
-
-    print(gem)
 
     try:
         return int(gem)

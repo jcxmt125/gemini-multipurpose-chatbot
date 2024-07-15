@@ -10,7 +10,6 @@ from geminillm import gemrequest
 from urlextract import URLExtract
 from cfradar import urlScan
 from cfsd import sdgen
-from htmlify import makePage
 from UploadFile import uploadFileToCloud
 import localconverters, cfllm, whispercf, nltocommand
 
@@ -23,6 +22,8 @@ def stripExt(fileName):
 
     for i in range(len(splitname)-1):
         noext += splitname[i]
+    
+    return noext
 
 def setup():
     print("Hello! Could you tell me your name?")
@@ -46,11 +47,33 @@ def setup():
     
 def videoConvertInteractive():
     print("I'll help you use ffmpeg!")
-    inputFilePath = input("Drag video file here: ")
+    inputFilePath = input("Drag video/audio file here: ")
+
+    fileName = inputFilePath.split("\\")[-1]
+
+    filePath = inputFilePath[:-len(fileName)]
+
+    fileName_noext = stripExt(fileName)
+
+    targetFormat = input("Which format do you want?\n> ")
+
+    subprocess.run(["ffmpeg","-i",inputFilePath,filePath+fileName_noext+"."+targetFormat])
+
+    print("Conversion OK, check the same path as the origin!")
 
 def imageConvertInteractive():
     print("I'll help you use imagemagick!")
     inputFilePath = input("Drag image file here: ")
+
+    fileName = inputFilePath.split("\\")[-1]
+
+    filePath = inputFilePath[:-len(fileName)]
+
+    targetFormat = input("Which format do you want?\n> ")
+
+    subprocess.run(["magick", "mogrify", "-format", targetFormat, "-path", filePath, inputFilePath])
+
+    print("Conversion OK, check the same path as the origin!")
 
 if __name__ == "__main__":
     if not Path.exists(Path("config.json")):
@@ -68,14 +91,60 @@ if __name__ == "__main__":
         if msg == "":
             continue
 
+        if msg[0] == "/":
+            if msg[1] == "c":#clear
+                for i in fullConstruct:
+                    construct += i["parts"][0]
+                    construct += "\n"
+
+                modelReply = gemrequest(construct)
+
+                if modelReply[0] == False:
+                    print("Something went wrong!")
+                    print(modelReply[1])
+                    continue
+                else:
+                    print(modelReply[1])
+                    config["ltmemory"] += str(datetime.datetime.today()) + ": " + modelReply[1]
+
+                    with open("config.json", "w") as f:
+                        json.dump(config, f)
+                    
+                    continue
+
+            elif msg[1] == "e":#exit
+                print("Exiting! (Just a moment while I save the conversation...)")
+                construct = "The following is a conversation between a chatbot and a user. Summarize the interaction briefly.\n"
+
+                for i in fullConstruct:
+                    construct += i["parts"][0]
+                    construct += "\n"
+
+                modelReply = gemrequest(construct)
+
+                if modelReply[0] == False:
+                    print("Something went wrong!")
+                    print(modelReply[1])
+                    continue
+                else:
+                    print(modelReply[1])
+                    config["ltmemory"] += str(datetime.datetime.today()) + ": " + modelReply[1]
+
+                    with open("config.json", "w") as f:
+                        json.dump(config, f)
+
+                    break
+                
+
         responseType = nltocommand.shouldIRespond(msg)
 
         if responseType == 1:#LLM response
             filesList = []
-
+            
+            print("Any files you'd like to attach? Return empty to stop adding files.")
+            print("Note: I'll extract text only from PDF files!")
+            
             while True:
-                print("Any files you'd like to attach? Return empty to stop adding files.")
-                print("Note: I'll extract text only from PDF files!")
     
                 filePath = input("Drag file here: ")
                 
@@ -134,7 +203,18 @@ if __name__ == "__main__":
                 print(modelReply[1])
 
         elif responseType == 0:#Tool response
-            pass
+            listOfActions = ["0. video/audio conversion", "1. image conversion", "2. QR code scanning", "3. Image generation"]
+            task = nltocommand.nltocommand(listOfActions, msg)
+
+            if task == -1:
+                print("Sorry, I couldn't figure out what to do.")
+                continue
+            elif task == 0:
+                videoConvertInteractive()
+            elif task == 1:
+                imageConvertInteractive()
+            elif task == 2:
+                continue
 
         else:
             print("E: Something went wrong while I tried to understand you. Please try again.")
