@@ -95,11 +95,16 @@ def imageConvertInteractive():
 
     targetFormat = input("Which format do you want?\n> ")
 
+    print("Running imagemagick. This might take a bit...")
+
     subprocess.run(["magick", "mogrify", "-format", targetFormat, "-path", filePath, inputFilePath])
 
     print("Conversion OK, check the same path as the origin!")
 
 if __name__ == "__main__":
+    if not Path.exists(Path("temp")):
+        os.mkdir("temp")
+    
     if not Path.exists(Path("config.json")):
         setup()
         print("Setup complete!")
@@ -113,6 +118,8 @@ if __name__ == "__main__":
         config = json.load(f)
 
     print("Welcome, "+config["name"]+"!")
+
+    fullConstruct = []
 
     while True:
         msg = input("> ")
@@ -139,6 +146,8 @@ if __name__ == "__main__":
                     with open("config.json", "w") as f:
                         json.dump(config, f, indent= 2)
                     
+                    fullConstruct = []
+                    
                     continue
 
             elif msg[1] == "e":#exit
@@ -163,15 +172,27 @@ if __name__ == "__main__":
                         json.dump(config, f)
 
                     break
+
+            elif msg[1] == "f":
+                fullConstruct = []
+                print("Memory cleared without saving!")
+                continue
+
+            elif msg[1] == "h":
+                print("Slash commands: /clear, /exit, /force clear, /help")
+                print("Use + to do tool usage")
                 
 
-        responseType = nltocommand.shouldIRespond(msg)
+        if msg[0] == "+":#Abandoned "smart" analysus (LLM by default)
+            responseType = 0
+        else:
+            responseType = 1
 
         if responseType == 1:#LLM response
             filesList = []
             
             print("Any files you'd like to attach? Return empty to stop adding files.")
-            print("Note: I'll extract text only from PDF files!")
+            print("Note: I'll extract text only from PDF files, and might compress images or convert them to understand them better!")
             
             while True:
     
@@ -203,30 +224,49 @@ if __name__ == "__main__":
 
                         reader = pypdf.PdfReader(i)
 
-                        for j in range(reader.pages):
+                        for j in range(len(reader.pages)):
                             text = reader.pages[j].extract_text()
 
                             construct += text
 
                         construct += "\n"
 
+                    elif extension == "avif":
+
+                        fileName = i.split("\\")[-1]
+
+                        filePath = i[:-len(fileName)]
+
+                        targetFormat = "webp"
+
+                        fileName_noext = stripExt(fileName)
+
+                        print("Running imagemagick. This might take a bit...")
+
+                        subprocess.run(["magick", "mogrify", "-format", targetFormat, "-path", os.getcwd()+"\\temp", i])
+
+                        file = genai.upload_file(path="temp\\"+fileName_noext+"."+targetFormat,display_name=fileName_noext)
+                        filesUploadedList.append(genai.get_file(name=file.name))
+
+                        Path.unlink(Path(os.getcwd()+"\\temp\\"+fileName_noext+"."+targetFormat))
+
                     else:
                         file = genai.upload_file(path=i,display_name=fileName)
                         filesUploadedList.append(genai.get_file(name=file.name))
             
-            fullConstruct = [{'role':'user','parts':\
-                            [config["personality"] + "\n The user is named " + config["name"] + \
-                            ".\n These are summaries of your previous conversations with the user for context: " + config["ltmemory"]\
-                            +"\n Do not include a timestamp in your reply."]}]
+            if len(fullConstruct) <= 0:
+                fullConstruct = [{'role':'user','parts':\
+                                [config["personality"] + "\n The user is named " + config["name"] + \
+                                ".\n These are summaries of your previous conversations with the user for context: " + config["ltmemory"]\
+                                +"\n Do not include a timestamp in your reply."]}]
 
-            
 
             fullConstruct.append({'role':'user','parts':[construct]+filesUploadedList})
 
             modelReply = gemrequest(fullConstruct)
 
             if modelReply[0] == False:
-                print("E: Something went wrong... This information may be of use:")
+                print("E: Something went wrong. This information may be of use:")
                 print(modelReply[1])
             else:
                 print(modelReply[1])
@@ -240,12 +280,16 @@ if __name__ == "__main__":
                 continue
             elif task == 0:
                 videoConvertInteractive()
+
             elif task == 1:
                 imageConvertInteractive()
+
             elif task == 2:
                 qreader = QReader()
 
                 filePath = input("Drag file with QR code here: ")
+
+                print("Decoding QR code...")
 
                 image = cv2.cvtColor(cv2.imread(filePath), cv2.COLOR_BGR2RGB)
                 decoded_text = qreader.detect_and_decode(image=image)
@@ -258,17 +302,18 @@ if __name__ == "__main__":
                         print(j)
             
             elif task == 3:
-                img = qrcode.make(msg)
+                img = qrcode.make(input("Content of QR code: "))
                 img.save("qrcode.png")
                 print("Image saved to qrcode.png in the working directory!")
             
             elif task == 4:
-                sdgen(input("Input prompt for inage generation: "))
+                sdgen(input("Input prompt for image generation: "))
                 print("Image saved to output.png on the working directory!")
 
             elif task == 5:
                 filePath = input("Drag audio file to be transcribed here: ")
                 if config["transcription"] == 0:
+                    print("Sending Whisper transcription request...")
                     transcriptionResults = whispercf.cfwhisper(filePath)
 
                     if transcriptionResults == False:
@@ -276,8 +321,10 @@ if __name__ == "__main__":
                     else:
                         print(transcriptionResults)
                 else:
+                    print("Loading Whisper model...")
                     model = whisper.load_model(config["transcription"])
 
+                    print("Transcribing...")
                     result = model.transcribe(filePath)
 
                     print(result["text"])
