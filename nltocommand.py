@@ -42,6 +42,20 @@ def nltocommand(LoA, command):
     except:
         return -1
 
+def fileRequired(command):
+    construct = "Will this command require a new file to process properly? Reply with 1 for yes and 0 for no. Reply in a single number without text. \n"
+
+    construct += command
+
+    try:
+        gem = gemrequest(construct)[1]
+    except:
+        gem = nsllmreq("Only reply with a number. Do not contain any other text.",construct)
+
+    try:
+        return int(gem)
+    except:
+        return -1
 
 if __name__ == "__main__":
     print(nltocommand(["0. Summary", "1. Conversation", "2. File conversion", "3. Transcription"], input("Input user message: ")))

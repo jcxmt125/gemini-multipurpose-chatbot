@@ -6,7 +6,7 @@ from pathlib import Path
 from qreader import QReader
 
 #my own python files
-from geminillm import gemrequest
+from geminillm import gemrequest, countTokens
 from urlextract import URLExtract
 from cfradar import urlScan
 from cfsd import sdgen
@@ -191,8 +191,9 @@ if __name__ == "__main__":
         if responseType == 1:#LLM response
             filesList = []
             
-            print("Any files you'd like to attach? Return empty to stop adding files.")
-            print("Note: I'll extract text only from PDF files, and might compress images or convert them to understand them better!")
+            if len(fullConstruct) == 0:
+                print("Any files you'd like to attach? Return empty to stop adding files. Please ensure there aren't any non-english letters or spaces in the PATH to ensure less errors.")
+                print("Note: I'll extract text only from PDF files, and might compress images or convert them to understand them better!")
             
             while True:
     
@@ -218,6 +219,8 @@ if __name__ == "__main__":
             
                     if extension == "pdf":
 
+                        print("Reading PDF document: " + fileName)
+
                         construct += "PDF document " + str(documentIndex) + ":\n"
 
                         documentIndex += 1
@@ -241,16 +244,18 @@ if __name__ == "__main__":
 
                         fileName_noext = stripExt(fileName)
 
-                        print("Running imagemagick. This might take a bit...")
+                        print("Converting and uploading AVIF file: "+fileName)
 
                         subprocess.run(["magick", "mogrify", "-format", targetFormat, "-path", os.getcwd()+"\\temp", i])
 
-                        file = genai.upload_file(path="temp\\"+fileName_noext+"."+targetFormat,display_name=fileName_noext)
+                        file = genai.upload_file(path=os.getcwd()+"\\temp\\"+fileName_noext+"."+targetFormat,display_name=fileName_noext+targetFormat,mime_type="image/webp")
+                        
                         filesUploadedList.append(genai.get_file(name=file.name))
 
                         Path.unlink(Path(os.getcwd()+"\\temp\\"+fileName_noext+"."+targetFormat))
 
                     else:
+                        print("Uploading file: "+fileName)
                         file = genai.upload_file(path=i,display_name=fileName)
                         filesUploadedList.append(genai.get_file(name=file.name))
             
@@ -262,6 +267,15 @@ if __name__ == "__main__":
 
 
             fullConstruct.append({'role':'user','parts':[construct]+filesUploadedList})
+
+            modelTokens = countTokens(fullConstruct)
+
+            if modelTokens >= 10000 and modelTokens <= 100000:
+                print("Token count is slightly high: " + str(modelTokens))
+            elif modelTokens > 100000 and modelTokens < 1000000:
+                print("Token count is quite high: " + str(modelTokens) + " or " + str(modelTokens/10000)+"percent of model capacity.")
+            elif modelTokens >= 1000000:
+                raise("Token count is too high: " + str(modelTokens) + " or " + str(modelTokens/10000)+"percent of model capacity.")
 
             modelReply = gemrequest(fullConstruct)
 

@@ -22,6 +22,11 @@ def gemrequest(prompt, maxtoken = 8000, model = 'gemini-1.5-flash-latest'):
     else:
         return (True, response.text)
 
+def countTokens(prompt, model = 'gemini-1.5-flash-latest'):
+    model = genai.GenerativeModel(model)
+
+    return model.count_tokens(prompt).total_tokens
+
 if __name__ == "__main__":
     #An even simpler test to see this script works at all. Run this file directly to execute this, as it won't run when imported!
-    print(gemrequest(input("Text to send: ")))
+    print(countTokens(input("Text to send: ")))
