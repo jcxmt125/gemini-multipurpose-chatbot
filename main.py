@@ -194,6 +194,7 @@ if __name__ == "__main__":
             if len(fullConstruct) == 0:
                 print("Any files you'd like to attach? Return empty to stop adding files. Please ensure there aren't any non-english letters or spaces in the PATH to ensure less errors.")
                 print("Note: I'll extract text only from PDF files, and might compress images or convert them to understand them better!")
+                print("I can also use youtube videos (or anything handled by yt-dlp). I'll ask whether you'd like to use video or audio, or get text with whisper!")
             
             while True:
     
@@ -211,6 +212,96 @@ if __name__ == "__main__":
                 documentIndex = 1    
 
                 for i in filesList:
+
+                    if i[0:6] == "https:":
+
+                        if "youtube" in i:
+
+                            print("How would you like to ingest this file?")
+                            print("1. Video 2. Audio 3. Text only (Whisper)")
+
+                            mode = int(input("> "))
+
+                            if mode == 1:
+
+                                subprocess.run(["yt-dlp", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+
+                                filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
+
+                                for i in filesInTemp:
+                                    if (i.split(".")[-1] == "webm") or (i.split(".")[-1] == "mkv"):
+                                        filePath = os.getcwd()+"\\temp\\"+i
+                                        print("File was cached in the temp directory.")
+                                        break
+                                
+                                print("Something went wrong, and I wasn't able to download the video! Could you try attaching the video manually? It should be in the temp directory...")
+                                
+                                continue
+
+                            elif mode == 2:
+
+                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+
+                                filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
+
+                                for i in filesInTemp:
+                                    if (i.split(".")[-1] == "opus"):
+                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"temp\\"+i, os.getcwd()+"temp\\"+i[:-4]+".mp3"])
+                                        break
+                                    elif (i.split(".")[-1] == "m4a"):
+                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"temp\\"+i, os.getcwd()+"temp\\"+i[:-4]+".mp3"])
+                                        break
+
+                                filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
+
+                                for i in filesInTemp:
+                                    if (i.split(".")[-1] == "mp3"):
+                                        filePath = os.getcwd()+"\\temp\\"+i
+                                        print("File was cached in the temp directory.")
+                                        break
+
+                                
+                            elif mode == 3:
+
+                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+
+                                filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
+
+                                for i in filesInTemp:
+                                    if (i.split(".")[-1] == "opus"):
+                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"temp\\"+i, os.getcwd()+"temp\\"+i[:-4]+".mp3"])
+                                        break
+
+                                filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
+
+                                for i in filesInTemp:
+                                    if (i.split(".")[-1] == "mp3"):
+                                        filePath = os.getcwd()+"\\temp\\"+i
+                                
+                                if config["transcription"] == 0:
+                                    print("WARN: Transcribing on Cloudflare AI probably won't work for longer files.")
+                                    transcriptionResults = whispercf.cfwhisper(filePath)
+
+                                    if transcriptionResults == False:
+                                        print("E: Something went wrong while I tried to transcribe the file with Cloudflare AI. Please try again.")
+                                        continue
+                                    else:
+                                        construct += "Transcript: "+ transcriptionResults + "\n"
+                                else:
+                                    print("Loading Whisper model...")
+                                    model = whisper.load_model(config["transcription"])
+
+                                    print("Transcribing...")
+                                    result = model.transcribe(filePath)
+
+                                    construct += "Transcript: "+ result["text"] + "\n"
+
+                            else:
+                                print("E: Invalid option. Please try again.")
+                                continue
+                                
+                                
+
                     fileName = i.split("\\")[-1]
 
                     fileName_noext = stripExt(fileName)
