@@ -8,4 +8,4 @@ qreader
 qrcode
 pillow
 pypdf
-whisper
+openai-whisper

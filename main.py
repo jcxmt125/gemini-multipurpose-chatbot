@@ -129,6 +129,7 @@ if __name__ == "__main__":
 
         if msg[0] == "/":
             if msg[1] == "c":#clear
+                print("Just a moment while I clear short term memory...")
                 for i in fullConstruct:
                     construct += i["parts"][0]
                     construct += "\n"
@@ -179,7 +180,7 @@ if __name__ == "__main__":
                 continue
 
             elif msg[1] == "h":
-                print("Slash commands: /clear, /exit, /force clear, /help")
+                print("Slash commands: /[c]lear, /[e]xit, /[f]orce clear, /[h]elp")
                 print("Use + to do tool usage")
                 
 
@@ -194,7 +195,7 @@ if __name__ == "__main__":
             if len(fullConstruct) == 0:
                 print("Any files you'd like to attach? Return empty to stop adding files. Please ensure there aren't any non-english letters or spaces in the PATH to ensure less errors.")
                 print("Note: I'll extract text only from PDF files, and might compress images or convert them to understand them better!")
-                print("I can also use youtube videos (or anything handled by yt-dlp). I'll ask whether you'd like to use video or audio, or get text with whisper!")
+                #print("I can also use youtube videos (or anything handled by yt-dlp). I'll ask whether you'd like to use video or audio, or get text with whisper!")
             
             while True:
     
@@ -213,7 +214,7 @@ if __name__ == "__main__":
 
                 for i in filesList:
 
-                    if i[0:6] == "https:":
+                    """if i[0:6] == "https:":
 
                         if "youtube" in i:
 
@@ -300,7 +301,7 @@ if __name__ == "__main__":
                                 print("E: Invalid option. Please try again.")
                                 continue
                                 
-                    print(filePath)
+                    print(filePath)"""
 
                     fileName = i.split("\\")[-1]
 
