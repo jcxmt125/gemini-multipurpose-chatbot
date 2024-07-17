@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
                             if mode == 1:
 
-                                subprocess.run(["yt-dlp", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+                                subprocess.run(["yt-dlp", "-o", os.getcwd()+"\\temp\\video.%(ext)s", i])
 
                                 filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
 
@@ -240,16 +240,16 @@ if __name__ == "__main__":
 
                             elif mode == 2:
 
-                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\video.%(ext)s", i])
 
                                 filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
 
                                 for i in filesInTemp:
                                     if (i.split(".")[-1] == "opus"):
-                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"temp\\"+i, os.getcwd()+"temp\\"+i[:-4]+".mp3"])
+                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"\\temp\\"+i, os.getcwd()+"\\temp\\"+i[:-4]+"mp3"])
                                         break
                                     elif (i.split(".")[-1] == "m4a"):
-                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"temp\\"+i, os.getcwd()+"temp\\"+i[:-4]+".mp3"])
+                                        subprocess.run(["ffmpeg", "-i", os.getcwd()+"\\temp\\"+i, os.getcwd()+"\\temp\\"+i[:-3]+"mp3"])
                                         break
 
                                 filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
@@ -263,7 +263,7 @@ if __name__ == "__main__":
                                 
                             elif mode == 3:
 
-                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\%(title)s.%(ext)s", i])
+                                subprocess.run(["yt-dlp", "-x", "-o", os.getcwd()+"\\temp\\video.%(ext)s", i])
 
                                 filesInTemp = os.listdir(os.getcwd()+"\\temp\\")
 
@@ -300,7 +300,7 @@ if __name__ == "__main__":
                                 print("E: Invalid option. Please try again.")
                                 continue
                                 
-                                
+                    print(filePath)
 
                     fileName = i.split("\\")[-1]
 
