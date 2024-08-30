@@ -19,7 +19,7 @@ def run(model, inputs):
     response = requests.post(f"{API_BASE_URL}{model}", headers=headers, json=input)
     return response
 
-selectedModel = "@cf/meta/llama-3-8b-instruct"
+selectedModel = "@cf/meta/llama-3.1-8b-instruct"
 
 #streamed response
 #TODO make this not error out for single token responses

@@ -13,3 +13,9 @@
 ## Installation and usage
 
 See [here](https://hackclub.jclink.link/documentations/other/gemini-multichatbot.html)
+
+##Image
+
+This is a terminal application and will mostly look like a terminal, and it will greet *you*, not me, but...
+![The bot greeting the creator of this repository](image.png)
+...this is what it looks like for me!
